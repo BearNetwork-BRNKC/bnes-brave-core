@@ -5,6 +5,7 @@
 import BraveStrings
 import SwiftUI
 
+/// An infobar displaying a privacy notice when a search result ad is clicked
 class SearchResultAdClickedInfoBar: InfoBar {
   init(
     onLinkPressed: @escaping (URL) -> Void

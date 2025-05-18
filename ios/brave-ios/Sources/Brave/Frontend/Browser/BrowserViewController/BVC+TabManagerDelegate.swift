@@ -373,14 +373,6 @@ extension BrowserViewController: TabManagerDelegate {
       self.downloadToast = downloadToast
     }
 
-    if let searchResultAdClickedInfoBar = toast as? SearchResultAdClickedInfoBar {
-      self.searchResultAdClickedInfoBar = searchResultAdClickedInfoBar
-    }
-
-    if let newTabTakeoverInfoBar = toast as? NewTabTakeoverInfoBar {
-      self.newTabTakeoverInfoBar = newTabTakeoverInfoBar
-    }
-
     // If BVC isnt visible hold on to this toast until viewDidAppear
     if view.window == nil {
       pendingToast = toast
@@ -393,6 +385,11 @@ extension BrowserViewController: TabManagerDelegate {
       } else {
         activeButtonToast = toast
       }
+    }
+
+    if let infoBar = toast as? InfoBar {
+      activeInfoBar?.dismiss(false, animated: false)
+      activeInfoBar = infoBar
     }
 
     toast.showToast(
@@ -409,19 +406,6 @@ extension BrowserViewController: TabManagerDelegate {
         }
       }
     )
-  }
-
-  func hideToastsOnNavigationStartIfNeeded(_ tabManager: TabManager) {
-    if tabManager.selectedTab?.braveSearch?.braveSearchResultAdManager == nil {
-      searchResultAdClickedInfoBar?.dismiss(false)
-      searchResultAdClickedInfoBar = nil
-    }
-
-    let isNewTabURL = tabManager.selectedTab?.visibleURL?.isNewTabURL
-    if isNewTabURL != true {
-      newTabTakeoverInfoBar?.dismiss(false)
-      newTabTakeoverInfoBar = nil
-    }
   }
 
   func tabManagerDidRemoveAllTabs(_ tabManager: TabManager, toast: ButtonToast?) {

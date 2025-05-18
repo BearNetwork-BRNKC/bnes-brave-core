@@ -6,6 +6,7 @@ import BraveShared
 import BraveStrings
 import SwiftUI
 
+/// An infobar displaying a privacy notice when a new tab takeover is viewed
 class NewTabTakeoverInfoBar: InfoBar {
   init(
     onLinkPressed: @escaping ((URL) -> Void),
