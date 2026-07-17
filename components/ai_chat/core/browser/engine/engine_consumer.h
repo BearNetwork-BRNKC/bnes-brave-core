@@ -93,8 +93,10 @@ class EngineConsumer {
   // A non-owning view of conversation history passed to engines.
   class ConversationHistoryView {
    public:
-    ConversationHistoryView(const ConversationHistory& owning);
-    ConversationHistoryView(std::vector<const mojom::ConversationTurn*> turns);
+    ConversationHistoryView(
+        const ConversationHistory& owning);  // NOLINT(runtime/explicit)
+    ConversationHistoryView(std::vector<const mojom::ConversationTurn*>
+                                turns);  // NOLINT(runtime/explicit)
     ~ConversationHistoryView();
 
     ConversationHistoryView(const ConversationHistoryView&) = delete;
