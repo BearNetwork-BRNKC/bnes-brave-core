@@ -45,7 +45,7 @@ export default function FeatureMenu(props: Props) {
 
   const copyEntireConversation = async () => {
     const conversationHistory =
-      conversationContext.api.getConversationHistory.current()
+      conversationContext.api.getConversationHistory.current(null)
     const formattedConversation =
       formatConversationForClipboard(conversationHistory)
     navigator.clipboard.writeText(formattedConversation).then(() => {

@@ -71,7 +71,7 @@ export function renderConversation(
     return
   }
 
-  api.getConversationHistory.update(conversation)
+  api.getConversationHistory.update(null, conversation)
 
   const root = createRoot(element)
 

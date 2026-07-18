@@ -59,7 +59,7 @@ export default function ShareConversationModal(props: Props) {
       // to the returned viewer URL as a fragment, so the shared link is only
       // usable by whoever the user shares it with.
       const json = serializeConversationForSharing(
-        conversationContext.api.getConversationHistory.current(),
+        conversationContext.api.getConversationHistory.current(null),
       )
       const { ciphertext, keyFragment } = await encryptForSharing(json)
       // The browser process combines the key fragment with the server's viewer
