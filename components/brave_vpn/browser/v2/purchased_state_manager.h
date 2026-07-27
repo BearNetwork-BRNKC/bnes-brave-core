@@ -106,7 +106,9 @@ class PurchasedStateManager final {
       base::expected<std::string, std::string> result);
   void RunPurchasedStateCallback(mojom::PurchasedState state,
                                  std::optional<std::string> description);
-  void ScheduleSubscriberCredentialRefresh();
+  void ScheduleSubscriberCredentialRefresh(const base::Time& expiration_time);
+  void OnRefreshSubscriberCredential();
+  void RefreshSubscriberCredential();
 
 #if !BUILDFLAG(IS_ANDROID)
   void UpdatePurchasedStateForSessionExpired();
@@ -121,6 +123,8 @@ class PurchasedStateManager final {
   std::string loading_environment_;
   uint64_t loading_sequence_ = 0;
   base::OneShotTimer load_timeout_timer_;
+  base::OneShotTimer subscriber_credential_refresh_timer_;
+  bool subscriber_credential_refresh_deferred_ = false;
   base::WeakPtrFactory<PurchasedStateManager> weak_factory_{this};
 };
 

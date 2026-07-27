@@ -9,7 +9,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -383,6 +382,16 @@ class PurchasedStateManagerTest : public testing::Test {
     return credential_store_.HasAnyCredential();
   }
 
+  bool RefreshScheduled() const {
+    return manager_->subscriber_credential_refresh_timer_.IsRunning();
+  }
+  bool RefreshDeferred() const {
+    return manager_->subscriber_credential_refresh_deferred_;
+  }
+  base::TimeDelta RefreshDelay() const {
+    return manager_->subscriber_credential_refresh_timer_.GetCurrentDelay();
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -421,9 +430,20 @@ TEST_F(PurchasedStateManagerTest, InitialStateWithValidCredentialIsPurchased) {
   // State is settled synchronously at construction, and the notification is
   // delivered asynchronously.
   EXPECT_TRUE(manager_->IsPurchased());
+  EXPECT_TRUE(RefreshScheduled());
   EXPECT_EQ(skus_client_.credential_summary_calls(), 0);
   collector_.WaitForChangeCount(1);
   EXPECT_EQ(collector_.changes()[0].first, mojom::PurchasedState::PURCHASED);
+}
+
+TEST_F(PurchasedStateManagerTest, InitialStateWithSkusCredentialExchanges) {
+  SeedSkusCredential(base::Time::Now() + base::Days(30));
+  CreateManager();
+
+  EXPECT_TRUE(credential_store_.GetValidSkusCredential().has_value());
+  EXPECT_TRUE(api_client_.HasPendingExchange());
+  EXPECT_EQ(skus_client_.credential_summary_calls(), 0);
+  EXPECT_EQ(loading_environment(), CurrentEnvironment());
 }
 
 TEST_F(PurchasedStateManagerTest, InitialStateClearsStaleCredential) {
@@ -516,6 +536,7 @@ TEST_F(PurchasedStateManagerTest, CachedCredentialFastPathCancelsSilentLoad) {
   EXPECT_TRUE(loading_environment().empty());
   EXPECT_GT(loading_sequence(), silent_sequence);
   EXPECT_TRUE(manager_->IsPurchased());
+  EXPECT_TRUE(RefreshScheduled());
   EXPECT_EQ(skus_client_.credential_summary_calls(), 1);
 }
 
@@ -1066,6 +1087,164 @@ TEST_F(PurchasedStateManagerTest, ExpiredSummaryMeansNotPurchased) {
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// Success schedules a refresh, at expiry today; firing it clears the cache and
+// re-resolves from scratch (a full summary round-trip, visible as LOADING).
+TEST_F(PurchasedStateManagerTest, SuccessSchedulesRefreshThatReresolves) {
+  CreateManager();
+  const base::Time expiry = base::Time::Now() + base::Days(30);
+  SeedSkusCredential(expiry);
+  manager_->Load(CurrentDomain());
+
+  api_client_.ResolveExchange(base::ok(std::string(kTestSubscriberCredential)));
+  ASSERT_TRUE(manager_->IsPurchased());
+  EXPECT_TRUE(RefreshScheduled());
+  EXPECT_EQ(RefreshDelay(), expiry - base::Time::Now());
+
+  task_environment_.FastForwardBy(base::Days(30) - base::Seconds(1));
+  EXPECT_TRUE(HasAnyStoredCredential());
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(HasAnyStoredCredential());
+
+  EXPECT_EQ(skus_client_.credential_summary_calls(), 1);
+  EXPECT_EQ(manager_->GetInfo().state, mojom::PurchasedState::LOADING);
+}
+
+// A transient error during the refresh leaves the user un-purchased with
+// nothing scheduled to recover. This is intended behavior: the refresh can be
+// manually triggered by a user in the UI.
+TEST_F(PurchasedStateManagerTest,
+       RefreshTransientFailureDoesntScheduleRecovery) {
+  CreateManager();
+  SeedSkusCredential(base::Time::Now() + base::Days(30));
+  manager_->Load(CurrentDomain());
+
+  api_client_.ResolveExchange(base::ok(std::string(kTestSubscriberCredential)));
+  ASSERT_TRUE(manager_->IsPurchased());
+
+  task_environment_.FastForwardBy(base::Days(30));
+  CallOnCredentialSummary(loading_sequence(), CurrentDomain(),
+                          SkusTransportError());
+  EXPECT_EQ(manager_->GetInfo().state, mojom::PurchasedState::FAILED);
+  EXPECT_FALSE(RefreshScheduled());
+}
+
+// A load for the CURRENT environment owns the visible state, so the refresh
+// yields to it entirely: no clear, no reload, and no re-armed refresh either.
+TEST_F(PurchasedStateManagerTest, RefreshSkippedForCurrentEnvironmentLoad) {
+  SeedSubscriberCredential(base::Time::Now() +
+                           PurchasedStateManager::kLoadTimeout / 2);
+  CreateManager();  // PURCHASED + refresh armed at expiry.
+  ASSERT_TRUE(RefreshScheduled());
+  ASSERT_FALSE(RefreshDeferred());
+
+  // Drop the cached credential so a current-environment Load() resolves through
+  // the async chain instead of the fast path, leaving a load in flight while
+  // the refresh (armed at construction) is still pending.
+  credential_store_.Clear();
+  manager_->Load(CurrentDomain());
+  ASSERT_EQ(loading_environment(), CurrentEnvironment());
+  ASSERT_EQ(skus_client_.credential_summary_calls(), 1);
+  const uint64_t in_flight_sequence = loading_sequence();
+
+  task_environment_.FastForwardBy(PurchasedStateManager::kLoadTimeout / 2);
+
+  // Yielded: the in-flight load is untouched and nothing was re-armed.
+  EXPECT_EQ(loading_environment(), CurrentEnvironment());
+  EXPECT_EQ(loading_sequence(), in_flight_sequence);
+  EXPECT_EQ(skus_client_.credential_summary_calls(), 1);
+  EXPECT_FALSE(RefreshScheduled());
+  EXPECT_FALSE(RefreshDeferred());
+}
+
+// A refresh coming due during a silent cross-environment load must not disturb
+// it (firing unguarded would destroy the still-valid current credential and
+// cancel the silent load), nor be dropped. It is marked due and left pending;
+// the cache stays intact and the silent load runs untouched.
+TEST_F(PurchasedStateManagerTest, RefreshDeferredWhileSilentLoadInFlight) {
+  SeedSubscriberCredential(base::Time::Now() +
+                           PurchasedStateManager::kLoadTimeout / 2);
+  CreateManager();  // PURCHASED + refresh armed at expiry.
+  ASSERT_TRUE(manager_->IsPurchased());
+  ASSERT_TRUE(RefreshScheduled());
+  ASSERT_FALSE(RefreshDeferred());
+
+  manager_->Load(OtherDomain());  // Silent load in flight.
+  ASSERT_EQ(loading_environment(), OtherEnvironment());
+  ASSERT_EQ(skus_client_.credential_summary_calls(), 1);
+  const uint64_t silent_sequence = loading_sequence();
+
+  task_environment_.FastForwardBy(PurchasedStateManager::kLoadTimeout / 2);
+
+  // Marked due but not run: cache intact, silent load untouched.
+  EXPECT_TRUE(RefreshDeferred());
+  EXPECT_TRUE(HasAnyStoredCredential());
+  EXPECT_EQ(loading_environment(), OtherEnvironment());
+  EXPECT_EQ(loading_sequence(), silent_sequence);
+  EXPECT_EQ(skus_client_.credential_summary_calls(), 1);
+}
+
+// The deferred refresh runs the moment the silent load ends without committing,
+// no waiting for the load timeout. With no load in flight it clears the stale
+// cache and reloads the current environment.
+TEST_F(PurchasedStateManagerTest, DeferredRefreshRunsWhenSilentLoadEnds) {
+  SeedSubscriberCredential(base::Time::Now() +
+                           PurchasedStateManager::kLoadTimeout / 2);
+  CreateManager();  // PURCHASED + refresh armed at expiry.
+  ASSERT_TRUE(RefreshScheduled());
+  ASSERT_FALSE(RefreshDeferred());
+
+  manager_->Load(OtherDomain());  // Silent load in flight.
+  ASSERT_EQ(loading_environment(), OtherEnvironment());
+
+  // Refresh comes due while the silent load is still in flight -> deferred.
+  task_environment_.FastForwardBy(PurchasedStateManager::kLoadTimeout / 2);
+  ASSERT_TRUE(RefreshDeferred());
+  ASSERT_EQ(loading_environment(), OtherEnvironment());
+  const int summary_calls_before = skus_client_.credential_summary_calls();
+
+  // The silent load ends without committing. The visible state was never
+  // LOADING (it is PURCHASED), so the deferred refresh runs immediately and
+  // synchronously.
+  CallFinishLoad(OtherEnvironment(), mojom::PurchasedState::FAILED);
+
+  EXPECT_FALSE(RefreshDeferred());
+  EXPECT_FALSE(HasAnyStoredCredential());
+  EXPECT_EQ(loading_environment(), CurrentEnvironment());
+  EXPECT_EQ(skus_client_.credential_summary_calls(), summary_calls_before + 1);
+  EXPECT_EQ(skus_client_.last_domain(), CurrentDomain());
+  EXPECT_EQ(manager_->GetInfo().state, mojom::PurchasedState::LOADING);
+}
+
+// A refresh deferred during a silent load that then COMMITS is dropped, not
+// run: the commit switches environments and the new environment arms its own
+// refresh, so nothing is owed to the environment we left.
+TEST_F(PurchasedStateManagerTest, DeferredRefreshDroppedWhenSilentLoadCommits) {
+  SeedSubscriberCredential(base::Time::Now() +
+                           PurchasedStateManager::kLoadTimeout / 2);
+  CreateManager();  // PURCHASED + refresh armed at expiry.
+
+  const std::string other_env = OtherEnvironment();
+  manager_->Load(OtherDomain());  // Silent load in flight.
+
+  // Refresh comes due while the silent load is in flight -> deferred.
+  task_environment_.FastForwardBy(PurchasedStateManager::kLoadTimeout / 2);
+  ASSERT_TRUE(RefreshDeferred());
+
+  // Drive the silent load to its commit point: the environment switches. The
+  // deferral is cleared so it cannot trigger a stale refresh of the old env.
+  CallOnCredentialSummary(loading_sequence(), OtherDomain(),
+                          SkusOkResult(kValidSummary));
+  CallOnPrepareCredentialsPresentation(
+      loading_sequence(), OtherDomain(),
+      SkusOkResult(BuildTestCookie(base::Time::Now() + base::Days(30))));
+
+  EXPECT_EQ(manager_->GetCurrentEnvironment(), other_env);
+  EXPECT_FALSE(RefreshDeferred());
+  // Still in flight for the new environment (exchange pending), undisturbed.
+  EXPECT_EQ(loading_environment(), other_env);
+  EXPECT_EQ(manager_->GetInfo().state, mojom::PurchasedState::LOADING);
+}
 
 class PurchasedStateManagerWithRealSkusServiceTest
     : public PurchasedStateManagerTest {
