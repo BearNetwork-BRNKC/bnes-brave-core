@@ -1828,7 +1828,7 @@ public class BrowserViewController: UIViewController {
       return true
     } else if let selectedTab = tabManager.selectedTab, selectedTab.canGoBack {
       selectedTab.goBack()
-      selectedTab.browserData?.resetExternalAlertProperties()
+      selectedTab.externalAppURLHelper?.reset()
       return true
     }
     return false
