@@ -542,11 +542,14 @@ import os
     }
   }
 
-  /// Read the resources JSON at `sourceURL`, append a
-  /// `user-custom-scriptlet.js` entry with the base64-encoded `customScriptlet`,
-  /// and write the result into the app caches directory.
+  /// Read the resources JSON at `sourceURL`, append an entry for each of the given
+  /// `customScriptlets` with its base64-encoded content, and write the result into the
+  /// app caches directory.
   /// - Returns: The URL of the augmented file, or nil if augmentation failed.
-  private func writeAugmentedResources(from sourceURL: URL, customScriptlet: String) -> URL? {
+  private func writeAugmentedResources(
+    from sourceURL: URL,
+    customScriptlets: [CustomScriptlet]
+  ) -> URL? {
     guard
       let data = try? Data(contentsOf: sourceURL),
       var entries = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
@@ -554,13 +557,14 @@ import os
       return nil
     }
 
-    let encodedContent = Data(customScriptlet.utf8).base64EncodedString()
-    entries.append([
-      "name": "user-custom-scriptlet.js",
-      "aliases": [],
-      "kind": ["mime": "application/javascript"],
-      "content": encodedContent,
-    ])
+    for customScriptlet in customScriptlets {
+      entries.append([
+        "name": customScriptlet.name,
+        "aliases": [],
+        "kind": ["mime": "application/javascript"],
+        "content": Data(customScriptlet.content.utf8).base64EncodedString(),
+      ])
+    }
 
     guard
       let augmentedData = try? JSONSerialization.data(withJSONObject: entries),
@@ -591,14 +595,14 @@ import os
   private func getResourcesInfo(fromFileURL fileURL: URL) -> GroupedAdBlockEngine.ResourcesInfo {
     let version = fileURL.deletingLastPathComponent().lastPathComponent
 
-    // Inject a `user-custom-scriptlet.js` entry so the user's custom scriptlet is
-    // available to the engine. Falls back to the unmodified component file if
-    // there is no custom scriptlet or if augmentation fails.
-    if let customScriptlet = CustomFilterListStorage.shared.customScriptlet,
-      !customScriptlet.isEmpty,
+    // Inject an entry for each of the user's custom scriptlets so they are available
+    // to the engine. Falls back to the unmodified component file if there are no
+    // custom scriptlets or if augmentation fails.
+    let customScriptlets = CustomFilterListStorage.shared.customScriptlets
+    if !customScriptlets.isEmpty,
       let augmentedFileURL = writeAugmentedResources(
         from: fileURL,
-        customScriptlet: customScriptlet
+        customScriptlets: customScriptlets
       )
     {
       return GroupedAdBlockEngine.ResourcesInfo(
