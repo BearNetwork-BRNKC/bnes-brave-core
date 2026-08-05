@@ -103,9 +103,8 @@ export const addressEndpoints = ({
     getZCashTransactionType: query<
       GetZCashTransactionTypeResult,
       {
-        chainId: string
         accountId: BraveWallet.AccountId
-        useShieldedPool: boolean
+        fromTokenType: BraveWallet.ZCashTokenType
         address: string
       }
     >({
@@ -113,9 +112,9 @@ export const addressEndpoints = ({
         try {
           const { data: api } = baseQuery(undefined)
           const { txType, error } =
-            await api.zcashWalletService.getTransactionType(
+            await api.zcashWalletService.getZCashTransactionType(
               arg.accountId,
-              arg.useShieldedPool,
+              arg.fromTokenType,
               arg.address,
             )
           return {
