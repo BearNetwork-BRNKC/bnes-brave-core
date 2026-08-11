@@ -104,6 +104,9 @@
     <message name="IDS_SETTINGS_CONTAINERS_ENABLED_LABEL" desc="The label for the toggle that enables the Containers feature" formatter_data="webui=Containers">
       Enable Containers
     </message>
+    <message name="IDS_SETTINGS_CONTAINERS_ALWAYS_USE_MINI_ICON_LABEL" desc="Label for a settings toggle that makes container tabs always show only the mini container icon overlay instead of a larger container icon even when tab space allows." formatter_data="webui=Containers">
+      Always use mini icon for containers
+    </message>
     <message name="IDS_SETTINGS_CONTAINERS_ADD_CONTAINER_LABEL" desc="The label for dialog title for adding a container" formatter_data="webui=Containers">
       Add new container
     </message>
@@ -850,6 +853,9 @@
     </message>
     <message name="IDS_SETTINGS_PSST_SUB_LABEL" desc="Privacy settings tuning sub-label">
       Allows Brave to automatically suggest (and adjust) site-specific privacy settings.
+    </message>
+    <message name="IDS_SETTINGS_BRAVE_ORIGIN_PSST_TOGGLE_TITLE" desc="The title for toggling the 'psst' feature on/off for Brave Origin">
+      Privacy Settings Tuning Tool
     </message>
   </if>
   <if expr="is_win">
