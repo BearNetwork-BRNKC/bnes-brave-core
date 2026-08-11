@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "base/check.h"
@@ -314,16 +315,16 @@ const BraveBrowserView* BraveBrowserView::From(const BrowserView* view) {
 }
 
 bool BraveBrowserView::ShouldUseBraveWebViewRoundedCornersForContents(
-    const Browser* browser) {
-  if (!browser->is_type_normal()) {
+    const BrowserWindowInterface* browser) {
+  if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
     return false;
   }
 
-  if (browser->profile()->GetPrefs()->GetBoolean(kWebViewRoundedCorners)) {
+  if (browser->GetProfile()->GetPrefs()->GetBoolean(kWebViewRoundedCorners)) {
     return true;
   }
 
-  auto* model = browser->tab_strip_model();
+  auto* model = browser->GetTabStripModel();
   if (model->empty()) {
     return false;
   }
@@ -334,7 +335,7 @@ bool BraveBrowserView::ShouldUseBraveWebViewRoundedCornersForContents(
 
   // Use rounded corners when browser view shows split view.
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-  return browser_view->multi_contents_view()->IsInSplitView();
+  return browser_view && browser_view->multi_contents_view()->IsInSplitView();
 }
 
 BraveBrowserView::BraveBrowserView(Browser* browser) : BrowserView(browser) {
@@ -423,9 +424,12 @@ BraveBrowserView::BraveBrowserView(Browser* browser) : BrowserView(browser) {
     CHECK(controller);
     focus_mode_observation_.Observe(controller);
 
-    focus_mode_title_bar_view_ =
-        AddChildView(std::make_unique<FocusModeTitleBarView>());
-    focus_mode_title_bar_view_->SetVisible(false);
+    if (features::kFocusModeUrlDisplay.Get() ==
+        features::FocusModeUrlDisplay::kTitleBar) {
+      focus_mode_title_bar_view_ =
+          AddChildView(std::make_unique<FocusModeTitleBarView>());
+      focus_mode_title_bar_view_->SetVisible(false);
+    }
 
     focus_mode_top_overlay_ =
         AddChildView(std::make_unique<FocusModeTopOverlay>(
@@ -1438,6 +1442,14 @@ void BraveBrowserView::UpdateFocusModeState() {
     focus_mode_title_bar_view_->SetVisible(enabled);
     focus_mode_title_bar_view_->SetTab(
         enabled ? browser()->tab_strip_model()->GetActiveTab() : nullptr);
+  }
+
+  const bool show_domain =
+      enabled && features::kFocusModeUrlDisplay.Get() ==
+                     features::FocusModeUrlDisplay::kMiniToolbar;
+  if (show_domain != show_active_contents_domain_) {
+    show_active_contents_domain_ = show_domain;
+    GetBraveMultiContentsView()->OnShowActiveContentsDomainChanged();
   }
 
   // The toolbar is given extra horizontal padding in vertical tabs mode when

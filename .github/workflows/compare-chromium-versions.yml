@@ -30,11 +30,11 @@ jobs:
           target_ver="$(chromium_ver "${GITHUB_BASE_REF:?}")"
 
           comment() { gh pr comment "${PR_NUMBER:?}" -R "${GITHUB_REPOSITORY:?}" -b "Chromium major version is behind target branch ($pr_ver vs $target_ver). Please rebase."; }
-          success() { status notice "${1:?}: CI ✅ | Merge ✅"; label remove; }
+          success() { status notice "${1:?}: CI ✅ | Merge ✅"; label remove || true; }
 
           failure() {
               case "${1:?}" in
-                  runci) ci=✅; label remove;;
+                  runci) ci=✅; label remove || true;;
                   *) has_label || comment; ci=🚫; label add;;
               esac
               status error "${2:?}: CI $ci | Merge 🚫"
