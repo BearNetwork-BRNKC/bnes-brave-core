@@ -8,6 +8,7 @@ package org.chromium.chrome.browser.theme;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.os.Build;
 import android.view.View;
@@ -23,50 +24,52 @@ import org.chromium.chrome.browser.flags.ChromeFeatureMap;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.components.cached_flags.CachedFlag;
 import org.chromium.ui.R;
+import org.chromium.ui.util.AttrUtils;
 
 /** Controls Brave's runtime use of Material dynamic colors. */
 @NullMarked
 public final class BraveDynamicColors {
     // ChromeCachedFlags.<clinit> creates a singleton bytecode-redirected to BraveCachedFlags
     // before BraveCachedFlags' static fields are ready, so this CachedFlag must live separately.
-    private static final CachedFlag sDynamicColorsFlag =
+    private static final CachedFlag sDynamicColorsDefaultFlag =
             new CachedFlag(
                     ChromeFeatureMap.getInstance(),
-                    BraveFeatureList.BRAVE_ANDROID_DYNAMIC_COLORS,
-                    false);
+                    BraveFeatureList.BRAVE_ANDROID_DYNAMIC_COLORS_BY_DEFAULT,
+                    true);
 
     private BraveDynamicColors() {}
 
-    /** Returns the feature flag used for cached-flag registration and early-startup reads. */
-    public static CachedFlag getCachedFlag() {
-        return sDynamicColorsFlag;
+    /** Returns the cached feature that supplies the default for an unset user preference. */
+    public static CachedFlag getCachedDefaultFlag() {
+        return sDynamicColorsDefaultFlag;
     }
 
     /**
      * Returns whether dynamic colors are available for this app session.
      *
-     * <p>Availability requires the cached feature flag to be enabled and Android 12 or later. It
-     * does not include the user's preference; {@link #isDynamicColorsEnabled()} is the preferred
-     * method for runtime behavior checks.
+     * <p>Availability requires Android 12 or later. It does not include the user's preference;
+     * {@link #isDynamicColorsEnabled()} is the preferred method for runtime behavior checks.
      */
     public static boolean isDynamicColorsAvailable() {
-        return getCachedFlag().isEnabled() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
     }
 
     /**
      * Returns whether dynamic colors should be used at runtime.
      *
-     * <p>This requires dynamic colors to be available and the user preference to be enabled. The
-     * preference defaults to enabled when it has not been set.
+     * <p>This requires dynamic colors to be available and the user preference to be enabled. An
+     * unset preference uses the cached remotely controlled default.
      */
     public static boolean isDynamicColorsEnabled() {
         return isDynamicColorsAvailable() && isDynamicColorsUserEnabled();
     }
 
-    /** Returns the persisted user preference, which defaults to enabled when unset. */
+    /** Returns the persisted user preference or the cached default when it is unset. */
     private static boolean isDynamicColorsUserEnabled() {
         return ChromeSharedPreferences.getInstance()
-                .readBoolean(BravePreferenceKeys.BRAVE_ANDROID_DYNAMIC_COLORS_ENABLED, true);
+                .readBoolean(
+                        BravePreferenceKeys.BRAVE_ANDROID_DYNAMIC_COLORS_ENABLED,
+                        getCachedDefaultFlag().isEnabled());
     }
 
     /**
@@ -121,6 +124,24 @@ public final class BraveDynamicColors {
      */
     public static void applyToOutlinedButtonIfEnabled(View button) {
         applyButtonBackgroundColorIfEnabled(button, R.attr.globalTextButtonTextColor);
+    }
+
+    /**
+     * Returns the active theme's {@code globalTextButtonTextColor}, or {@code fallbackColor} when
+     * dynamic colors are disabled.
+     *
+     * @param theme theme used to resolve {@code globalTextButtonTextColor} when dynamic colors are
+     *     enabled
+     * @param fallbackColor color returned when dynamic colors are disabled
+     * @return the resolved theme text-button color, or {@code fallbackColor} when dynamic colors
+     *     are disabled
+     */
+    public static int getTextButtonColor(Resources.Theme theme, int fallbackColor) {
+        if (!isDynamicColorsEnabled()) {
+            return fallbackColor;
+        }
+
+        return AttrUtils.resolveColor(theme, R.attr.globalTextButtonTextColor);
     }
 
     private static void applyButtonBackgroundColorIfEnabled(View button, int backgroundColorAttr) {

@@ -147,6 +147,9 @@ constexpr char16_t kPsstLearnMoreUrl[] =
     u"https://support.brave.app/hc/en-us/articles/47405731650957";
 #endif
 
+constexpr char16_t kBraveAccountLearnMoreURL[] =
+    u"https://support.brave.app/hc/en-us/articles/45530506862349";
+
 void BraveAddCommonStrings(content::WebUIDataSource* html_source,
                            Profile* profile) {
   webui::LocalizedString localized_strings[] = {
@@ -214,6 +217,9 @@ void BraveAddCommonStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_BRAVE_ORIGIN_PLAYLIST_TOGGLE_TITLE},
       {"braveEmailAliasesToggleTitle",
        IDS_SETTINGS_BRAVE_ORIGIN_EMAIL_ALIASES_TOGGLE_TITLE},
+#if BUILDFLAG(ENABLE_PSST)
+      {"bravePsstToggleTitle", IDS_SETTINGS_BRAVE_ORIGIN_PSST_TOGGLE_TITLE},
+#endif
       {"braveOriginWebDiscoveryProjectToggleTitle",
        IDS_SETTINGS_BRAVE_ORIGIN_WEB_DISCOVERY_PROJECT_TOGGLE_TITLE},
       {"braveOriginP3AToggleTitle", IDS_SETTINGS_BRAVE_ORIGIN_P3A_TOGGLE_TITLE},
@@ -1300,6 +1306,8 @@ void BraveAddEmailAliasesStrings(content::WebUIDataSource* html_source) {
 void BraveAddBraveAccountStrings(content::WebUIDataSource* html_source) {
   if (brave_account::features::IsBraveAccountEnabled()) {
     html_source->AddLocalizedStrings(webui::kBraveAccountSettingsStrings);
+    html_source->AddString("braveAccountLearnMoreURL",
+                           kBraveAccountLearnMoreURL);
   }
 }
 

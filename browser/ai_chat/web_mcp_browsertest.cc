@@ -161,7 +161,7 @@ IN_PROC_BROWSER_TEST_F(WebMcpBrowserTest,
   ASSERT_TRUE(content);
 
   auto* ai_chat_service =
-      AIChatServiceFactory::GetForBrowserContext(browser()->profile());
+      AIChatServiceFactory::GetForBrowserContext(browser()->GetProfile());
   auto* conversation = ai_chat_service->CreateConversation();
   ASSERT_TRUE(conversation);
 
@@ -176,20 +176,20 @@ IN_PROC_BROWSER_TEST_F(WebMcpBrowserTest,
   auto tools = RefreshAndGetTools(manager);
   ASSERT_EQ(2u, tools.size());
 
-  // Names are prefixed with the sanitized host ("a.com" → "a_com"). Only the
-  // host is used (not the full path) to keep the name within Bedrock's 64-char
-  // tool-name limit.
+  // Names are prefixed with "web_" and the sanitized host ("a.com" → "a_com").
+  // Only the host is used (not the full path) to keep the name within Bedrock's
+  // 64-char tool-name limit.
   std::set<std::string> tool_names;
   for (const auto& tool : tools) {
     ASSERT_TRUE(tool);
     tool_names.insert(std::string(tool->Name()));
   }
-  EXPECT_THAT(tool_names,
-              ::testing::UnorderedElementsAre("a_com_echo", "a_com_ping"));
+  EXPECT_THAT(tool_names, ::testing::UnorderedElementsAre("web_a_com_echo",
+                                                          "web_a_com_ping"));
 
   // Sanity check on metadata for the richer tool.
   for (const auto& tool : tools) {
-    if (tool->Name() == "a_com_echo") {
+    if (tool->Name() == "web_a_com_echo") {
       // The description embeds the full page URL and the page-provided
       // description.
       std::string description(tool->Description());
@@ -214,7 +214,7 @@ IN_PROC_BROWSER_TEST_F(WebMcpBrowserTest,
   ASSERT_TRUE(content);
 
   auto* ai_chat_service =
-      AIChatServiceFactory::GetForBrowserContext(browser()->profile());
+      AIChatServiceFactory::GetForBrowserContext(browser()->GetProfile());
   auto* conversation = ai_chat_service->CreateConversation();
   ASSERT_TRUE(conversation);
 
@@ -229,7 +229,7 @@ IN_PROC_BROWSER_TEST_F(WebMcpBrowserTest,
 IN_PROC_BROWSER_TEST_F(WebMcpBrowserTest,
                        AssociatedContentManager_RefreshesAcrossNavigations) {
   auto* ai_chat_service =
-      AIChatServiceFactory::GetForBrowserContext(browser()->profile());
+      AIChatServiceFactory::GetForBrowserContext(browser()->GetProfile());
   auto* conversation = ai_chat_service->CreateConversation();
   ASSERT_TRUE(conversation);
   auto* manager = conversation->associated_content_manager();

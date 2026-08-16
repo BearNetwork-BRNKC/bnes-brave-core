@@ -16,6 +16,7 @@
 #include "brave/third_party/blink/renderer/brave_farbling_constants.h"
 #include "brave/third_party/blink/renderer/platform/brave_audio_farbling_helper.h"
 #include "components/content_settings/core/common/content_settings_types.h"
+#include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/dom_window.h"
@@ -51,6 +52,9 @@ CORE_EXPORT BraveFarblingLevel
 GetBraveFarblingLevelFor(ExecutionContext* context,
                          ContentSettingsType webcompat_settings_type,
                          BraveFarblingLevel default_value);
+// TODO(https://github.com/brave/brave-browser/issues/58021): Remove this helper
+// once the MAXIMUM ("strict") farbling mode is removed; it currently returns
+// true unless the farbling level is MAXIMUM.
 CORE_EXPORT bool AllowFingerprinting(
     ExecutionContext* context,
     ContentSettingsType webcompat_settings_type);
@@ -67,6 +71,12 @@ CORE_EXPORT int FarbledPointerScreenCoordinate(const DOMWindow* view,
                                                FarbleKey key,
                                                int client_coordinate,
                                                int true_screen_coordinate);
+// Returns `metadata` with the "Brave" brand renamed to "Google Chrome" when the
+// top frame is on the brave-checks.txt list, so that navigator.userAgentData
+// matches the Sec-CH-UA headers the browser rewrites for those sites.
+CORE_EXPORT blink::UserAgentMetadata MaybeHideBraveBrand(
+    ExecutionContext* context,
+    blink::UserAgentMetadata metadata);
 
 class CORE_EXPORT BraveSessionCache final
     : public GarbageCollected<BraveSessionCache>,
@@ -93,6 +103,9 @@ class CORE_EXPORT BraveSessionCache final
                      int max_random_offset);
   bool AllowFontFamily(blink::WebContentSettingsClient* settings,
                        const blink::AtomicString& family_name);
+  bool ShouldHideBraveBrand() const {
+    return default_shields_settings_->hide_brave_brand;
+  }
   brave_shields::FarblingPRNG MakePseudoRandomGenerator(
       FarbleKey key = FarbleKey::kNone);
   std::optional<blink::BraveAudioFarblingHelper> GetAudioFarblingHelper();
@@ -101,11 +114,8 @@ class CORE_EXPORT BraveSessionCache final
   // then this method will crash, otherwise handler is created and its
   // non-owning reference is returned. If you are only looking to  get a
   // prviously created handler then call the getter method
-  // get_webgl_farbled_extension_handler. |supported_extensions| is the actual
-  // list of the currently supported webgl extensions on the device which would
-  // be farbled.
+  // get_webgl_farbled_extension_handler.
   blink::WebGLFarbledExtensionHandler* CreateWebGLFarbledExtensionHandler(
-      const blink::Vector<blink::String>& supported_extensions,
       const bool is_webgl2);
 
   // Returns a non owning reference to the underlying webgl/webgl2 handler if

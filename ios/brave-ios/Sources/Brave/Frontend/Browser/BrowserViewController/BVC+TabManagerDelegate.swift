@@ -153,6 +153,7 @@ extension BrowserViewController: TabManagerDelegate {
         profile: tab.profile,
         syncAPI: profileController.syncAPI,
         sendTabAPI: profileController.sendTabAPI,
+        historyAPI: profileController.historyAPI,
         onOpenInNewTab: { [weak self] request, isPrivateMode in
           guard let self else { return }
           self.tabManager.addTabAndSelect(
@@ -355,7 +356,7 @@ extension BrowserViewController: TabManagerDelegate {
     updateToolbarUsingTabManager(tabManager)
     // tabDelegate is a weak ref (and the tab's webView may not be destroyed yet)
     // so we don't expcitly unset it.
-    topToolbar.leaveOverlayMode(didCancel: true)
+    dismissSearchInput()
     updateTabsBarVisibility()
     tab.removeObserver(self)
     tab.removePolicyDecider(self)
@@ -414,19 +415,6 @@ extension BrowserViewController: TabManagerDelegate {
         }
       }
     )
-  }
-
-  func hideToastsOnNavigationStartIfNeeded(_ tabManager: TabManager) {
-    if tabManager.selectedTab?.braveSearch?.braveSearchResultAdManager == nil {
-      searchResultAdClickedInfoBar?.dismiss(false)
-      searchResultAdClickedInfoBar = nil
-    }
-
-    let isNewTabURL = tabManager.selectedTab?.visibleURL?.isNewTabURL
-    if isNewTabURL != true {
-      newTabTakeoverInfoBar?.dismiss(false)
-      newTabTakeoverInfoBar = nil
-    }
   }
 
   func tabManagerDidRemoveAllTabs(_ tabManager: TabManager, toast: ButtonToast?) {

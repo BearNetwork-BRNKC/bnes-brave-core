@@ -64,6 +64,7 @@ import { useDebouncedCallback } from '../swap/hooks/useDebouncedCallback'
 
 // style
 import {
+  Text,
   Column,
   CopyButton,
   HorizontalSpace,
@@ -71,7 +72,7 @@ import {
   Row,
   LoadingRing,
 } from '../../../components/shared/style'
-import { Description, Title } from '../onboarding/onboarding.style'
+import { Description } from '../onboarding/onboarding.style'
 import {
   FilterTokenRow, //
 } from '../../../components/desktop/views/portfolio/style'
@@ -87,6 +88,8 @@ import {
   SearchWrapper,
   SelectAssetWrapper,
   SearchAndDropdownWrapper,
+  BackButton,
+  BackIcon,
 } from './deposit-funds.style'
 
 // components
@@ -114,6 +117,9 @@ import { Skeleton } from '../../../components/shared/loading-skeleton/styles'
 import {
   PanelActionHeader, //
 } from '../../../components/desktop/card-headers/panel-action-header'
+import {
+  DefaultPanelHeader, //
+} from '../../../components/desktop/card-headers/default-panel-header'
 
 const zcashAddressOptions: zcashAddressOptionType[] = [
   {
@@ -141,6 +147,7 @@ export const DepositFundsScreen = () => {
   // Selectors
   const isPanel = useSafeUISelector(UISelectors.isPanel)
   const isMobile = useSafeUISelector(UISelectors.isMobile)
+  const isSidePanel = useSafeUISelector(UISelectors.isSidePanel)
   const isMobileOrPanel = isMobile || isPanel
 
   // render
@@ -151,10 +158,16 @@ export const DepositFundsScreen = () => {
         exact
       >
         <WalletPageWrapper
-          hideNav={isMobileOrPanel}
+          hideNav={!isSidePanel && isMobileOrPanel}
           wrapContentInBox={true}
+          useCardInPanel={true}
           cardHeader={
-            isMobileOrPanel ? (
+            isSidePanel ? (
+              <DefaultPanelHeader
+                expandRoute={WalletRoutes.DepositFundsPage}
+                title={getLocale('braveWalletDepositCryptoButton')}
+              />
+            ) : isMobileOrPanel ? (
               <PanelActionHeader
                 title={getLocale('braveWalletDepositCryptoButton')}
                 expandRoute={WalletRoutes.DepositFundsPage}
@@ -175,11 +188,17 @@ export const DepositFundsScreen = () => {
 
       <Route path={WalletRoutes.DepositFundsPage}>
         <WalletPageWrapper
-          hideNav={isMobileOrPanel}
+          hideNav={!isSidePanel && isMobileOrPanel}
           wrapContentInBox={true}
+          useCardInPanel={true}
           useFullHeight={true}
           cardHeader={
-            isMobileOrPanel ? (
+            isSidePanel ? (
+              <DefaultPanelHeader
+                expandRoute={WalletRoutes.DepositFundsPage}
+                title={getLocale('braveWalletDepositCryptoButton')}
+              />
+            ) : isMobileOrPanel ? (
               <PanelActionHeader
                 title={getLocale('braveWalletDepositCryptoButton')}
                 expandRoute={WalletRoutes.DepositFundsPage}
@@ -511,6 +530,7 @@ function DepositAccount() {
   const isZCashShieldedTransactionsEnabled = useSafeWalletSelector(
     WalletSelectors.isZCashShieldedTransactionsEnabled,
   )
+  const isSidePanel = useSafeUISelector(UISelectors.isSidePanel)
 
   // queries
   const { accounts } = useAccountsQuery()
@@ -740,7 +760,27 @@ function DepositAccount() {
       padding='0 12px'
     >
       <Column alignItems='flex-start'>
-        <Title>{depositTitleText}</Title>
+        <Row
+          gap='8px'
+          padding='16px 0px 0px 0px'
+          marginBottom='16px'
+          width='unset'
+        >
+          {isSidePanel && (
+            <BackButton
+              onClick={() => history.push(WalletRoutes.DepositFundsPageStart)}
+            >
+              <BackIcon name='carat-left' />
+            </BackButton>
+          )}
+          <Text
+            variant='heading.h3'
+            textColor='primary'
+            textAlign='left'
+          >
+            {depositTitleText}
+          </Text>
+        </Row>
 
         {selectedAssetNetwork && (
           <Description>
