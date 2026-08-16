@@ -26,6 +26,7 @@
 #include "brave/components/de_amp/common/features.h"
 #include "brave/components/debounce/core/common/features.h"
 #include "brave/components/email_aliases/buildflags/buildflags.h"
+#include "brave/components/extension_malware_blocklist/common/features.h"
 #include "brave/components/google_sign_in_permission/features.h"
 #include "brave/components/image_metadata_stripper/common/features.h"
 #include "brave/components/local_ai/buildflags/buildflags.h"
@@ -137,6 +138,7 @@
 #include "brave/browser/ui/focus_mode/focus_mode_features.h"
 #include "brave/browser/ui/page_info/features.h"
 #include "brave/browser/ui/screenshot/features.h"
+#include "brave/components/sidebar/common/features.h"
 #endif
 
 #define EXPAND_FEATURE_ENTRIES(...) __VA_ARGS__,
@@ -445,15 +447,6 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
       FEATURE_VALUE_TYPE(                                               \
           chrome::android::kAdaptiveButtonInTopToolbarCustomizationV2), \
   })
-#define BRAVE_ANDROID_DYNAMIC_COLORS                                 \
-  EXPAND_FEATURE_ENTRIES({                                           \
-      "brave-android-dynamic-colors",                                \
-      "Dynamic Colors",                                              \
-      "Use dynamic colors in the application. This feature is only " \
-      "available on Android 12 and above.",                          \
-      kOsAndroid,                                                    \
-      FEATURE_VALUE_TYPE(features::kBraveAndroidDynamicColors),      \
-  })
 #define BRAVE_CUSTOM_SEARCH_ENGINES                                        \
   EXPAND_FEATURE_ENTRIES({                                                 \
       "brave-custom-search-engines",                                       \
@@ -475,7 +468,6 @@ const char* const kBraveSyncImplLink[1] = {"https://github.com/brave/go-sync"};
 #define BRAVE_BACKGROUND_VIDEO_PLAYBACK_ANDROID
 #define BRAVE_SAFE_BROWSING_ANDROID
 #define BRAVE_ADAPTIVE_BUTTON_IN_TOOLBAR_ANDROID
-#define BRAVE_ANDROID_DYNAMIC_COLORS
 #define BRAVE_CUSTOM_SEARCH_ENGINES
 #define BRAVE_ANDROID_TAB_GROUPS_SETTINGS
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -854,6 +846,20 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabCollapseDelayChoices[] = {
               extensions::features::kBraveAutoUpdateExtensions),               \
       }))
 
+#define BRAVE_EXTENSION_MALWARE_BLOCKLIST_FEATURE_ENTRY                    \
+  IF_BUILDFLAG(                                                            \
+      ENABLE_EXTENSIONS,                                                   \
+      EXPAND_FEATURE_ENTRIES({                                             \
+          "brave-extension-malware-blocklist",                             \
+          "Enhanced malicious extension blocking",                         \
+          "Also turns off extensions flagged on Brave's own "              \
+          "malicious-extension list, in addition to the extensions Brave " \
+          "already blocks.",                                               \
+          kOsWin | kOsLinux | kOsMac,                                      \
+          FEATURE_VALUE_TYPE(extension_malware_blocklist::features::       \
+                                 kExtensionMalwareBlocklist),              \
+      }))
+
 #if BUILDFLAG(ENABLE_BRAVE_EDUCATION)
 #define BRAVE_EDUCATION_FEATURE_ENTRIES                                       \
   EXPAND_FEATURE_ENTRIES({                                                    \
@@ -941,6 +947,19 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabCollapseDelayChoices[] = {
   })
 #else
 #define BRAVE_SCREENSHOT_FEATURE_ENTRY
+#endif
+
+#if defined(TOOLKIT_VIEWS)
+#define BRAVE_SIDEBAR_WEB_PANEL_FEATURE_ENTRY                  \
+  EXPAND_FEATURE_ENTRIES({                                     \
+      "sidebar-web-panel",                                     \
+      "Sidebar Web Panel",                                     \
+      "Support web panel in sidebar.",                         \
+      kOsWin | kOsMac | kOsLinux,                              \
+      FEATURE_VALUE_TYPE(sidebar::features::kSidebarWebPanel), \
+  })
+#else
+#define BRAVE_SIDEBAR_WEB_PANEL_FEATURE_ENTRY
 #endif
 
 // Keep the last item empty.
@@ -1526,7 +1545,6 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabCollapseDelayChoices[] = {
   BRAVE_BACKGROUND_VIDEO_PLAYBACK_ANDROID                                      \
   BRAVE_SAFE_BROWSING_ANDROID                                                  \
   BRAVE_ADAPTIVE_BUTTON_IN_TOOLBAR_ANDROID                                     \
-  BRAVE_ANDROID_DYNAMIC_COLORS                                                 \
   BRAVE_ANDROID_TAB_GROUPS_SETTINGS                                            \
   BRAVE_CUSTOM_SEARCH_ENGINES                                                  \
   BRAVE_CHANGE_ACTIVE_TAB_ON_SCROLL_EVENT_FEATURE_ENTRIES                      \
@@ -1543,6 +1561,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabCollapseDelayChoices[] = {
   BRAVE_UPGRADE_WHEN_IDLE_FEATURE_ENTRY                                        \
   BRAVE_EXTENSIONS_MANIFEST_V2                                                 \
   BRAVE_EXTENSION_AUTO_UPDATE_FEATURE_ENTRY                                    \
+  BRAVE_EXTENSION_MALWARE_BLOCKLIST_FEATURE_ENTRY                              \
   BRAVE_WORKAROUND_NEW_WINDOW_FLASH                                            \
   BRAVE_WEBASSEMBLY_JITLESS_FEATURE_ENTRY                                      \
   BRAVE_EDUCATION_FEATURE_ENTRIES                                              \
@@ -1559,6 +1578,7 @@ constexpr flags_ui::FeatureEntry::Choice kVerticalTabCollapseDelayChoices[] = {
       FEATURE_VALUE_TYPE(brave_origin::features::kBraveOrigin),                \
   })                                                                           \
   BRAVE_SCREENSHOT_FEATURE_ENTRY                                               \
+  BRAVE_SIDEBAR_WEB_PANEL_FEATURE_ENTRY                                        \
   LAST_BRAVE_FEATURE_ENTRIES_ITEM  // Keep it as the last item.
 namespace flags_ui {
 namespace {

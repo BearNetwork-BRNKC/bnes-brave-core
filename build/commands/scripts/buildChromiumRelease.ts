@@ -1,0 +1,250 @@
+// Copyright (c) 2023 The Brave Authors. All rights reserved.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this file,
+// You can obtain one at https://mozilla.org/MPL/2.0/.
+
+// A script to build and pack a Chromium release build from scratch
+// Reuses the same /src folder
+// Designed to be used on CI, but should work locally too.
+// The script includes syncing; there is no need to run pnpm run sync before.
+
+// Check environment before doing anything.
+import '../lib/checkEnvironment.js'
+
+import { program } from 'commander'
+import { collect } from '../lib/commandsUtils.ts'
+import config from '../lib/config.ts'
+import util from '../lib/util.js'
+import path from 'node:path'
+import fs from 'fs-extra'
+import depotTools from '../lib/depotTools.js'
+import syncUtil from '../lib/syncUtils.js'
+import * as Log from '../lib/log.ts'
+import { isCI } from '../lib/ciDetect.ts'
+
+// Use the same filename as for Brave archive.
+const getOutputFilename = (): string => {
+  const platform = (() => {
+    if (config.targetOS === 'win') {
+      return 'win32'
+    }
+    if (config.targetOS === 'mac') {
+      return 'darwin'
+    }
+    return config.targetOS
+  })()
+  return `chromium-${config.chromeVersion}-${platform}-${config.targetArch}`
+}
+
+type PlatformConfig = {
+  buildTargets: string[]
+  extraHooks?: () => void
+  processArtifacts: () => void
+}
+
+const chromiumConfigs: Record<string, PlatformConfig> = {
+  'win': {
+    buildTargets: ['mini_installer'],
+    processArtifacts: () => {
+      // Repack it to reduce the size and use .zip instead of .7z.
+      const input = path.join(config.outputDir, 'chrome.7z')
+      const output = path.join(config.outputDir, `${getOutputFilename()}.zip`)
+      util.run(
+        'python3',
+        [
+          path.join(config.braveCoreDir, 'script', 'repack-archive.py'),
+          `--input=${input}`,
+          `--output=${output}`,
+          '--target_dir=Chrome-bin',
+        ],
+        config.defaultOptions,
+      )
+    },
+  },
+  'linux': {
+    buildTargets: ['chrome/installer/linux:stable_deb'],
+    processArtifacts: () => {
+      const debArch = (() => {
+        if (config.targetArch === 'x64') {
+          return 'amd64'
+        }
+        return config.targetArch
+      })()
+      fs.moveSync(
+        path.join(
+          config.outputDir,
+          `chromium-browser-stable_${config.chromeVersion}-1_${debArch}.deb`,
+        ),
+        path.join(config.outputDir, `${getOutputFilename()}.deb`),
+      )
+    },
+  },
+  'mac': {
+    buildTargets: ['chrome'],
+    extraHooks: () => {
+      Log.progressScope('download_hermetic_xcode', () => {
+        util.run(
+          'vpython3',
+          [
+            path.join(
+              config.braveCoreDir,
+              'build',
+              'mac',
+              'download_hermetic_xcode.py',
+            ),
+          ],
+          config.defaultOptions,
+        )
+      })
+    },
+    processArtifacts: () => {
+      util.run(
+        'zip',
+        ['-r', '-y', `${getOutputFilename()}.zip`, 'Chromium.app'],
+        { cwd: config.outputDir },
+      )
+    },
+  },
+  'android': {
+    buildTargets: ['chrome_public_apk'],
+    processArtifacts: () => {
+      fs.moveSync(
+        path.join(config.outputDir, 'apks', 'ChromePublic.apk'),
+        path.join(config.outputDir, `${getOutputFilename()}.apk`),
+      )
+    },
+  },
+}
+
+// A function to make gn args to build a release Chromium build.
+// There is two primarily sources:
+// 1. Chromium perf builds: tools/mb/mb_config_expectations/chromium.perf.json
+// 2. Brave Release build configuration
+function getChromiumGnArgs(): Record<string, any> {
+  const targetOs = config.targetOS
+  const targetArch = config.targetArch
+  const args: Record<string, any> = {
+    target_cpu: targetArch,
+    target_os: targetOs,
+    is_official_build: true,
+    ffmpeg_branding: 'Chrome',
+    enable_widevine: true,
+    proprietary_codecs: true,
+    ignore_missing_widevine_signing_cert: true,
+    skip_secondary_abi_for_cq: true,
+    ...config.extraGnArgs,
+  }
+
+  if (targetOs === 'android') {
+    args.debuggable_apks = false
+  } else {
+    args.enable_hangout_services_extension = false
+  }
+
+  if (targetOs === 'mac') {
+    const hermeticSdkPath = path.join(
+      config.srcDir,
+      'build',
+      'mac_files',
+      'xcode_binaries',
+    )
+    if (!fs.existsSync(hermeticSdkPath)) {
+      throw new Error('mac sdk is not found, run `pnpm run sync` to fix')
+    }
+    args.use_system_xcode = false
+  }
+
+  return args
+}
+
+function buildChromiumRelease(buildOptions: { force?: boolean } = {}) {
+  if (!isCI && !buildOptions.force) {
+    console.error(
+      'Warning: the command resets all changes in src/ folder.\n'
+        + 'src/brave stays untouched. Pass --force to continue.',
+    )
+    process.exit(1)
+  }
+  config.buildConfig = 'Release'
+  config.isChromium = true
+  config.update(buildOptions)
+
+  const chromiumConfig = chromiumConfigs[config.targetOS]
+  if (!chromiumConfig) {
+    throw Error(`${config.targetOS} is unsupported`)
+  }
+
+  depotTools.installDepotTools()
+  syncUtil.writeGclientConfig([config.targetOS], [config.targetArch], true)
+
+  util.runGit(config.srcDir, ['clean', '-f', '-d'])
+
+  Log.progressScope('gclient sync', () => {
+    syncUtil.syncChromium({ force: true, sync_chromium: true })
+  })
+
+  Log.progressScope('gclient runhooks', () => {
+    util.runGclient(['runhooks'])
+  })
+
+  if (chromiumConfig.extraHooks) {
+    chromiumConfig.extraHooks()
+  }
+
+  util.runGnGen(config.outputDir, getChromiumGnArgs())
+
+  Log.progressScope(`remove recursive symlinks`, () => {
+    // node_modules could have a symlink to src/brave. The recursive symlinks
+    // break the logic of some chromium scripts and should be remove before
+    // the build.
+    const linkPath = path.join(
+      config.braveCoreDir,
+      'node_modules',
+      'brave-core',
+    )
+    if (fs.existsSync(linkPath)) {
+      fs.unlinkSync(linkPath)
+    }
+  })
+
+  Log.progressScope(`ninja`, () => {
+    const target = chromiumConfig.buildTargets
+    const ninjaOpts: string[] = [
+      '-C',
+      config.outputDir,
+      target.join(' '),
+      ...config.extraNinjaOpts,
+    ]
+    util.run('autoninja', ninjaOpts, config.defaultOptions)
+  })
+
+  Log.progressScope('make archive', () => {
+    chromiumConfig.processArtifacts()
+  })
+}
+
+program
+  .description(
+    'Produces a chromium release build for performance testing.\n'
+      + 'Uses the same /src directory; all brave patches are reverted.\n'
+      + 'The default build_dir is `chromium_Release(_target_arch)`.\n'
+      + 'Intended for use on CI, use locally with care.',
+  )
+  .option('--force', 'Ignore a warning about non-CI build')
+  .option('-C <build_dir>', 'build config (out/chromium_Release')
+  .option('--target_os <target_os>', 'target OS')
+  .option('--target_arch <target_arch>', 'target architecture')
+  .option(
+    '--gn <arg>',
+    'Additional gn args, in the form <key>:<value>',
+    collect,
+    [],
+  )
+  .option(
+    '--ninja <opt>',
+    'Additional Ninja command-line options, in the form <key>:<value>',
+    collect,
+    [],
+  )
+  .action(buildChromiumRelease)
+  .parse()
