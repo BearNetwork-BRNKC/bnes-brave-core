@@ -21,6 +21,8 @@
 #include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
+#include "components/browser_actuator/internal/features.h"
+#include "components/browser_actuator/public/features.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/compose/core/browser/compose_features.h"
 #include "components/content_settings/core/common/features.h"
@@ -39,7 +41,10 @@
 #include "components/metrics/structured/structured_metrics_features.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/network_time/network_time_tracker.h"
+#include "components/ntp_tiles/features.h"
+#include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/one_time_tokens/core/common/one_time_token_features.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/page_info/core/features.h"
 #include "components/passage_embeddings/core/passage_embeddings_features.h"
@@ -126,6 +131,8 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &blink::features::kPreloadingEagerViewportHeuristics,
       &blink::features::kTranslationAPI,
       &blink::features::kUserMediaElement,
+      &browser_actuator::kBrowserActuator,
+      &browser_actuator::kBrowserActuatorProtoStreamTransport,
 #if BUILDFLAG(IS_ANDROID)
       &chrome::android::kAndroidPageInfoAsAppMenuItem,
 #endif
@@ -148,13 +155,16 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &feature_engagement::kIPHDiscardRingFeature,
       &feature_engagement::kIPHGMCCastStartStopFeature,
       &feature_engagement::kIPHPasswordsManagementBubbleAfterSaveFeature,
+      &feature_engagement::kIPHPdfInkSignaturesFeature,
       &feature_engagement::kIPHReadingListInSidePanelFeature,
       &feature_engagement::kIPHSideBySidePinnableFeature,
       &feature_engagement::kIPHSideBySideTabSwitchFeature,
+      &feature_engagement::kIPHTabGroupsSaveV2IntroFeature,
       &feature_engagement::kIPHVerticalTabstripTutorialFeature,
 #endif
       &features::kBookmarkTriggerForPrefetch,
       &features::kChromeStructuredMetrics,
+      &features::kDestroyProfileOnBrowserClose,
       &features::kDevToolsAiAssistanceContextSelectionAgent,
       &features::kDevToolsAiCodeCompletion,
       &features::kDevToolsAiCodeGeneration,
@@ -199,6 +209,8 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &features::kWebOTP,
 #if BUILDFLAG(IS_ANDROID)
       &feed::kAndroidOpenIncognitoAsWindow,
+      &feed::kFeedContainment,
+      &feed::kInterestFeedV2,
 #endif
       &heap_profiling::kHeapProfilerReporting,
       &history::kOrganicRepeatableQueries,
@@ -216,6 +228,7 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &kWindows11MicaTitlebar,
 #endif
       &lens::features::kLensOverlay,
+      &lens::features::kLensOverlayOmniboxEntryPoint,
       &lens::features::kLensStandalone,
       &media::kLiveCaption,
       &metrics::features::kStructuredMetrics,
@@ -234,14 +247,18 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &ntp_features::kNtpChromeCartModule,
       &ntp_features::kNtpDriveModule,
       &ntp_features::kNtpDriveModuleLink,
+      &ntp_tiles::kNtpMostLikelyFaviconsFromServerFeature,
+      &ntp_tiles::kPopularSitesBakedInContentFeature,
       &omnibox::internal::kWebUIOmniboxPopup,
       &omnibox::internal::kWebUIOmniboxAimPopup,
+      &omnibox::kAimEnabled,
       &omnibox::kMlUrlScoring,
 #if BUILDFLAG(IS_ANDROID)
       &omnibox::kOmniboxMobileParityUpdateV2,
 #endif
       &omnibox::kRichAutocompletion,
       &omnibox::kStarterPackExpansion,
+      &one_time_tokens::features::kGmailOtpRetrievalService,
       &optimization_guide::features::kOptimizationGuideFetchingForSRP,
       &optimization_guide::features::kOptimizationGuideModelExecution,
       &optimization_guide::features::kOptimizationHints,
@@ -271,6 +288,9 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &segmentation_platform::features::kSegmentationPlatformFeature,
       &segmentation_platform::features::kSegmentationPlatformTimeDelaySampling,
       &subresource_filter::kAdTagging,
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+      &switches::kFirstRunDesktopRefresh,
+#endif
       &switches::kSyncEnableBookmarksInTransportMode,
 #if !BUILDFLAG(IS_ANDROID)
       &tabs::kVerticalTabsLaunch,

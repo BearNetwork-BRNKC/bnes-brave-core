@@ -38,8 +38,8 @@ import { AccountSettingsModal } from '../../components/desktop/popup-modals/acco
 import {
   WalletPageWrapper, //
 } from '../../components/desktop/wallet-page-wrapper/wallet-page-wrapper'
-import { NftCollection } from '../../components/desktop/views/nfts/components/nft_collection'
-import { Banners } from '../../components/desktop/views/banners/banners'
+import { NftCollection } from '../screens/nfts/nft_collection'
+import { Banners } from '../../components/desktop/banners/banners'
 import {
   BackupWalletRoutes, //
 } from '../screens/backup-wallet/backup-wallet.routes'

@@ -76,12 +76,17 @@ export default function ShareConversationModal(props: Props) {
         await aiChatContext.api.service.shareConversation(
           ciphertext,
           keyFragment,
+          conversationUuid,
+          conversationTitle,
           /*copyToClipboard=*/ true,
         )
       // A null result means sharing failed and nothing was copied, so leave the
       // button in its initial state to allow retrying.
       if (sharedConversationUrl) {
         setIsCopied(true)
+        // The browser has recorded the new share, so anything showing the list
+        // of shares needs to fetch it again.
+        aiChatContext.api.getConversationShares.invalidate()
       }
     } finally {
       setIsGenerating(false)
