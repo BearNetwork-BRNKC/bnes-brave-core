@@ -1237,18 +1237,18 @@ void BraveContentBrowserClient::WillCreateURLLoaderFactory(
     bool is_bnes_request = false;
     if (frame) {
       GURL frame_url = frame->GetLastCommittedURL();
-      if (bns::IsBnesScheme(frame_url)) {
+      if (bnes::IsBnesScheme(frame_url)) {
         is_bnes_request = true;
       }
     }
-    if (!is_bnes_request && request_initiator.scheme() == bns::kBnesScheme) {
+    if (!is_bnes_request && request_initiator.scheme() == bnes::kBnesScheme) {
       is_bnes_request = true;
     }
     if (is_bnes_request) {
-      *factory_override = network::mojom::URLLoaderFactoryOverride::New(
-          bns::BnesURLLoaderFactory::Create(),
-          /* overridden_factory_receiver= */ absl::nullopt,
-          /* skip_cors_enabled_scheme_check= */ true);
+      *factory_override = network::mojom::URLLoaderFactoryOverride::New();
+      (*factory_override)->overriding_factory =
+          bnes::BnesURLLoaderFactory::Create();
+      (*factory_override)->skip_cors_enabled_scheme_check = true;
     }
   }
 
@@ -1271,6 +1271,18 @@ void BraveContentBrowserClient::WillCreateURLLoaderFactory(
       isolation_info, std::move(navigation_id), ukm_source_id, factory_builder,
       header_client, bypass_redirect_checks, disable_secure_dns,
       factory_override, navigation_response_task_runner);
+}
+
+mojo::PendingRemote<network::mojom::URLLoaderFactory>
+BraveContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
+    const std::string& scheme, content::FrameTreeNodeId frame_tree_node_id) {
+  // [BNES] Serve top-level bnes:// navigation from BnesURLLoaderFactory so the
+  // address bar stays bnes://xxxxxx.bnes (no redirect / no scheme rewrite).
+  if (scheme == bnes::kBnesScheme) {
+    return bnes::BnesURLLoaderFactory::Create();
+  }
+  return ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
+      scheme, frame_tree_node_id);
 }
 
 bool BraveContentBrowserClient::WillInterceptWebSocket(

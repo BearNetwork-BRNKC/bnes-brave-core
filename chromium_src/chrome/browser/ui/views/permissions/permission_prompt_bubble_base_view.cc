@@ -147,8 +147,8 @@ void AddWidevineFootnoteView(
 #else
 void AddAdditionalWidevineViewControlsIfNeeded(
     views::BubbleDialogDelegateView* dialog_delegate_view,
-    const std::vector<raw_ptr<permissions::PermissionRequest,
-                              VectorExperimental>>& requests) {}
+    const std::vector<std::unique_ptr<permissions::PermissionRequest>>&
+        requests) {}
 #endif
 
 // Custom combobox, shows permission lifetime options and applies selected value

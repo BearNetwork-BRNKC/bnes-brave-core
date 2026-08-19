@@ -5,38 +5,75 @@
 
 #include "brave/bnes/bns_resolver.h"
 
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "base/check.h"
+#include "base/containers/span.h"
+#include "base/memory/ref_counted.h"
 #include "brave/bnes/bns_security.h"
 #include "brave/bnes/bns_constants.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/data_pipe.h"
+#include "net/base/net_errors.h"
+#include "net/http/http_response_headers.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
 namespace bnes {
+
+namespace {
+
+// Placeholder page: proves the bnes:// pipeline is live end-to-end until the
+// real BNS registry (L6) replaces this resolution backend. Origin stays bnes://.
+constexpr std::string_view kPlaceholderHtml = R"HTML(
+<!doctype html><html><head><meta charset="utf-8">
+<title>bnes:// resolved (stub)</title></head><body>
+<h1>bnes://</h1>
+<p>This is the BNES native-routing placeholder. The bnes:// URL reached the
+browser-side loader. The real BNS registry resolution will replace this page.</p>
+</body></html>)HTML";
+
+}  // namespace
 
 void ResolveBnesContent(
     const GURL& url,
     mojo::PendingRemote<network::mojom::URLLoaderClient> client) {
   DCHECK(IsAllowedNavigationUrl(url));
 
-  // Extract the host (e.g., "bear.bnes").
-  const std::string host = url.host();
-
-  // TODO(H6.3): Implement the actual resolution pipeline:
-  // 1. Try built-in MetaMask BNS resolver (H1.x).
-  // 2. Fallback to direct RPC quorum (H2.*).
-  // 3. Validate returned CID via IsValidCid().
-  // 4. Build gateway URL: https://ipfs.bearnetwork.net/ipfs/<CID>
-  // 5. Verify gateway via IsAllowedGatewayUrl().
-  // 6. Stream content to client.
-
   mojo::Remote<network::mojom::URLLoaderClient> client_remote(
       std::move(client));
+
+  auto head = network::mojom::URLResponseHead::New();
+  head->headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  head->headers->AddHeader("Content-Type", "text/html; charset=utf-8");
+  head->mime_type = "text/html";
+  head->charset = "utf-8";
+
+  const std::string body(kPlaceholderHtml);
+  mojo::ScopedDataPipeProducerHandle producer;
+  mojo::ScopedDataPipeConsumerHandle consumer;
+  if (mojo::CreateDataPipe(body.size(), producer, consumer) == MOJO_RESULT_OK) {
+    size_t bytes_written = 0;
+    MojoResult write_result = producer->WriteData(
+        base::as_bytes(base::span(body)), MOJO_WRITE_DATA_FLAG_ALL_OR_NONE,
+        bytes_written);
+    producer.reset();
+    if (write_result == MOJO_RESULT_OK) {
+      client_remote->OnReceiveResponse(std::move(head), std::move(consumer),
+                                       std::nullopt);
+      client_remote->OnComplete(
+          network::URLLoaderCompletionStatus(net::OK));
+      return;
+    }
+  }
+
   client_remote->OnComplete(
-      network::URLLoaderCompletionStatus(net::ERR_NOT_IMPLEMENTED));
+      network::URLLoaderCompletionStatus(net::ERR_INSUFFICIENT_RESOURCES));
 }
 
 bool ParseContenthash(std::string_view payload, std::string_view& out_cid) {
