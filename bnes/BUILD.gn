@@ -39,7 +39,6 @@ source_set("scheme_handler") {
   deps = [
     ":security",
     "//base",
-    "//mojo",
     "//net",
     "//services/network/public/cpp",
     "//url",
