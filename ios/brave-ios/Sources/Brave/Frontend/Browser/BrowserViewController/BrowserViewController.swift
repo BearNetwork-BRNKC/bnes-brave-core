@@ -140,11 +140,6 @@ public class BrowserViewController: UIViewController {
   private var adFeatureLinkageCancelable: AnyCancellable?
   var onPendingRequestUpdatedCancellable: AnyCancellable?
 
-  // Translation
-  let translationHostingController: UIHostingController<AnyView> = .init(
-    rootView: AnyView(EmptyView())
-  )
-
   /// Voice Search
   var voiceSearchViewController: PopupViewController<SpeechToTextInputView>?
   var voiceSearchCancelable: AnyCancellable?
@@ -177,6 +172,12 @@ public class BrowserViewController: UIViewController {
 
   /// Whether last session was a crash or not
   private let crashedLastSession: Bool
+
+  // A view to place behind the bottom bar down to the toolbar during keyboard animations to avoid
+  // the odd look for the URL bar floating
+  private let bottomBarKeyboardBackground = UIView().then {
+    $0.isUserInteractionEnabled = false
+  }
 
   var toolbarVisibilityViewModel = ToolbarVisibilityViewModel(estimatedTransitionDistance: 44)
   private var toolbarLayoutGuide = UILayoutGuide().then {
@@ -270,6 +271,14 @@ public class BrowserViewController: UIViewController {
   let iapObserver: BraveVPNInAppPurchaseObserver
 
   private let prefsChangeRegistrar: PrefChangeRegistrar
+
+  /// Whether a wallet exists, to distinguish create/reset from the account
+  /// edits that also write the keyrings pref.
+  private var isWalletCreated: Bool = false {
+    didSet {
+      UserScriptManager.shared.isWalletCreated = isWalletCreated
+    }
+  }
 
   let defaultBrowserHelper: DefaultBrowserHelper = .init()
 
@@ -508,6 +517,23 @@ public class BrowserViewController: UIViewController {
     prefsChangeRegistrar.addObserver(forPath: kDefaultSolanaWallet) { [weak self] _ in
       self?.defaultWalletChanged(for: .sol)
     }
+    // Creating or resetting a wallet flips whether the providers are injected,
+    // so the scripts have to be refreshed the same way a default wallet change
+    // refreshes them. The keyrings pref is also written on every account add,
+    // rename and removal, so only react when the created state actually
+    // changed — refreshing discards every web view.
+    isWalletCreated = !profileController.profile.prefs.dictionary(
+      forPath: kBraveWalletKeyrings
+    ).isEmpty
+    prefsChangeRegistrar.addObserver(forPath: kBraveWalletKeyrings) { [weak self] _ in
+      guard let self else { return }
+      let isWalletCreated = !self.profileController.profile.prefs.dictionary(
+        forPath: kBraveWalletKeyrings
+      ).isEmpty
+      guard isWalletCreated != self.isWalletCreated else { return }
+      self.isWalletCreated = isWalletCreated
+      self.defaultWalletChanged(for: .eth)
+    }
 
     disconnectVPNIfDisabledByPolicy()
 
@@ -715,6 +741,8 @@ public class BrowserViewController: UIViewController {
       alongsideTransition: { context in
         if self.isViewLoaded {
           self.updateStatusBarOverlayColor()
+          self.bottomBarKeyboardBackground.backgroundColor =
+            self.privateBrowsingManager.browserColors.chromeBackground
           self.setNeedsStatusBarAppearanceUpdate()
         }
       }
@@ -831,6 +859,7 @@ public class BrowserViewController: UIViewController {
       header.isUsingBottomBar = isUsingBottomBar
       collapsedURLBarView.isUsingBottomBar = isUsingBottomBar
       searchContainer?.isUsingBottomBar = isUsingBottomBar
+      bottomBarKeyboardBackground.isHidden = !isUsingBottomBar
       topToolbar.displayTabTraySwipeGestureRecognizer?.isEnabled = isUsingBottomBar
       updateTabsBarVisibility()
       updateStatusBarOverlayColor()
@@ -856,13 +885,12 @@ public class BrowserViewController: UIViewController {
     addChild(tabsBar)
     tabsBar.didMove(toParent: self)
 
-    addChild(translationHostingController)
-    view.addSubview(translationHostingController.view)
-    translationHostingController.didMove(toParent: self)
-
     view.addSubview(alertStackView)
     view.addSubview(bottomTouchArea)
     view.addSubview(topTouchArea)
+    if #available(iOS 26.0, *) {
+      view.addSubview(bottomBarKeyboardBackground)
+    }
     view.addSubview(footer)
     view.addSubview(statusBarOverlay)
     view.addSubview(header)
@@ -1002,6 +1030,8 @@ public class BrowserViewController: UIViewController {
       .sink(receiveValue: { [weak self] isPrivateBrowsing in
         guard let self = self else { return }
         self.updateStatusBarOverlayColor()
+        self.bottomBarKeyboardBackground.backgroundColor =
+          self.privateBrowsingManager.browserColors.chromeBackground
         self.collapsedURLBarView.browserColors = self.privateBrowsingManager.browserColors
       })
 
@@ -1437,6 +1467,18 @@ public class BrowserViewController: UIViewController {
       make.leading.trailing.equalTo(self.view)
       if toolbar == nil {
         make.height.equalTo(0)
+      }
+    }
+
+    if #available(iOS 26.0, *) {
+      bottomBarKeyboardBackground.snp.remakeConstraints {
+        if self.isUsingBottomBar {
+          $0.top.equalTo(header)
+          $0.bottom.equalTo(footer)
+        } else {
+          $0.top.bottom.equalTo(footer)
+        }
+        $0.leading.trailing.equalToSuperview()
       }
     }
 
