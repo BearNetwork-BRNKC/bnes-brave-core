@@ -517,6 +517,9 @@ public class BrowserViewController: UIViewController {
     prefsChangeRegistrar.addObserver(forPath: kDefaultSolanaWallet) { [weak self] _ in
       self?.defaultWalletChanged(for: .sol)
     }
+    prefsChangeRegistrar.addObserver(forPath: kDefaultCardanoWallet) { [weak self] _ in
+      self?.defaultWalletChanged(for: .ada)
+    }
     // Creating or resetting a wallet flips whether the providers are injected,
     // so the scripts have to be refreshed the same way a default wallet change
     // refreshes them. The keyrings pref is also written on every account add,
@@ -2212,9 +2215,8 @@ public class BrowserViewController: UIViewController {
       toolbarTopConstraint?.update(offset: 0)
       toolbarBottomConstraint?.update(offset: 0)
 
-      // Check if UI side is collapsed already, and that bar visibility isn't being managed
-      // externally (e.g. by the keyboard handler which sets isEnabled = false)
-      if topToolbar.locationContainer.alpha < 1, toolbarVisibilityViewModel.isEnabled {
+      // Check if UI side is collapsed already
+      if topToolbar.locationContainer.alpha < 1 {
         let animator = toolbarVisibilityViewModel.toolbarChangePropertyAnimator
         animator.addAnimations { [self] in
           view.layoutIfNeeded()
@@ -2267,16 +2269,10 @@ public class BrowserViewController: UIViewController {
       topToolbar.locationContainer.alpha = 0
       toolbarBottomConstraint?.update(offset: footerHeight)
     }
-    // Only update bar visibility alphas when the toolbar visibility isn't being managed
-    // externally (e.g. by the keyboard handler which sets isEnabled = false). Skipping
-    // this when isEnabled = false prevents zeroing out collapsedBarContainerView while
-    // expandedBarStackView is already hidden, which would leave both bars invisible.
-    if toolbarVisibilityViewModel.isEnabled {
-      tabsBar.view.alpha = topToolbar.locationContainer.alpha
-      topToolbar.actionButtons.forEach { $0.alpha = topToolbar.locationContainer.alpha }
-      header.collapsedBarContainerView.alpha = 1 - topToolbar.locationContainer.alpha
-      toolbar?.actionButtons.forEach { $0.alpha = topToolbar.locationContainer.alpha }
-    }
+    tabsBar.view.alpha = topToolbar.locationContainer.alpha
+    topToolbar.actionButtons.forEach { $0.alpha = topToolbar.locationContainer.alpha }
+    header.collapsedBarContainerView.alpha = 1 - topToolbar.locationContainer.alpha
+    toolbar?.actionButtons.forEach { $0.alpha = topToolbar.locationContainer.alpha }
     let animator = toolbarVisibilityViewModel.toolbarChangePropertyAnimator
     animator.addAnimations {
       self.view.layoutIfNeeded()
@@ -2467,10 +2463,12 @@ extension BrowserViewController: WalletTabHelperDelegate {
     WalletProviderPermissionRequestsManager.shared.cancelAllPendingRequests(for: [coin])
     WalletProviderAccountCreationRequestManager.shared.cancelAllPendingRequests(coins: [coin])
     let privateMode = privateBrowsingManager.isPrivateBrowsing
-    if let cryptoStore = CryptoStore.from(
-      ipfsApi: profileController.ipfsAPI,
-      privateMode: privateMode
-    ) {
+    if let cryptoStore = self.walletStore?.cryptoStore
+      ?? CryptoStore.from(
+        ipfsApi: profileController.ipfsAPI,
+        privateMode: privateMode
+      )
+    {
       cryptoStore.rejectAllPendingWebpageRequests()
     }
     updateURLBarWalletButton()
@@ -2523,15 +2521,9 @@ extension BrowserViewController: WalletTabHelperDelegate {
     if await cryptoStore.isPendingRequestAvailable() {
       return true
     } else if let selectedTabOrigin = tabManager.selectedTab?.visibleURL?.origin {
-      if WalletProviderAccountCreationRequestManager.shared.hasPendingRequest(
-        for: selectedTabOrigin,
-        coinType: .sol
-      ) {
-        return true
-      }
       return WalletProviderPermissionRequestsManager.shared.hasPendingRequest(
         for: selectedTabOrigin,
-        coinType: .eth
+        coinTypes: [.eth, .sol, .ada]
       )
     }
     return false
