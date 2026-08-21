@@ -8,9 +8,9 @@
 
 // BNES PQC 錢包的 Extension ID。
 // 此 ID 由 bnes-metamask.pem 私鑰決定，唯一且固定。
-// 此常數作為整個 BNES Brave Overlay 中唯一的 ID 真相來源 (single source of truth)。
-// 若未來 PEM 金鑰更換，僅需修改此一處。
+// 此常數作為整個 BNES Brave Overlay 中唯一的 ID 真相來源 (single source of
+// truth)。 若未來 PEM 金鑰更換，僅需修改此一處。
 inline constexpr char kBnesWalletExtensionId[] =
-    "ogmlljngfdccnfmieajogmeomikpepmi";
+    "mjkhlgmnolenfmeiobklbfclkmbopinj";
 
-#endif  // BRAVE_BROWSER_EXTENSIONS_BNES_EXTENSION_CONSTANTS_H_
+#endif // BRAVE_BROWSER_EXTENSIONS_BNES_EXTENSION_CONSTANTS_H_

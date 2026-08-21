@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/strings/string_util.h"
+#include "brave/bnes/bns_constants.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/constants/url_constants.h"
 #include "chrome/browser/profiles/profile.h"
@@ -20,15 +21,19 @@ BraveAutocompleteSchemeClassifier::BraveAutocompleteSchemeClassifier(
 BraveAutocompleteSchemeClassifier::~BraveAutocompleteSchemeClassifier() =
     default;
 
-// Without this override, typing in brave:// URLs will search Google
+// Without this override, typing in brave:// URLs would search Google.
+// BNES extends the same override to bnes:// so the omnibox treats it as a
+// navigable native scheme (the loader handles navigation; no search).
 metrics::OmniboxInputType
 BraveAutocompleteSchemeClassifier::GetInputTypeForScheme(
     const std::string& scheme) const {
   if (scheme.empty()) {
     return metrics::OmniboxInputType::EMPTY;
   }
-  if (base::IsStringASCII(scheme) &&
-      base::EqualsCaseInsensitiveASCII(scheme, kBraveUIScheme)) {
+  const bool is_native_ui_scheme =
+      base::EqualsCaseInsensitiveASCII(scheme, kBraveUIScheme) ||
+      base::EqualsCaseInsensitiveASCII(scheme, bnes::kBnesScheme);
+  if (base::IsStringASCII(scheme) && is_native_ui_scheme) {
     return metrics::OmniboxInputType::URL;
   }
 
