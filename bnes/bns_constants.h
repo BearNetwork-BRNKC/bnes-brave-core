@@ -8,6 +8,8 @@
 
 #include <string_view>
 
+#include "url/gurl.h"
+
 namespace bnes {
 
 // Default path-style IPFS gateway host for BnesBrowser. Callers must still pass
@@ -25,7 +27,7 @@ inline constexpr std::string_view kBnesHostSuffix = ".bnes";
 
 // Scheme registered for native routing (Phase 4). Secure-context registration
 // remains a separate Chromium touch point and is not claimed complete here.
-inline constexpr std::string_view kBnesScheme = "bnes";
+inline constexpr char kBnesScheme[] = "bnes";
 
 // Helper to test whether a URL uses the BNES scheme.
 inline bool IsBnesScheme(const GURL& url) {

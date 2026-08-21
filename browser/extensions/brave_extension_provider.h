@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include "brave/browser/extensions/bnes_extension_constants.h"
 #include "extensions/browser/management_policy.h"
 
 namespace extensions {
@@ -21,6 +22,9 @@ class BraveExtensionProvider : public ManagementPolicy::Provider {
   std::string GetDebugPolicyProviderName() const override;
   bool MustRemainInstalled(const Extension* extension,
                            std::u16string* error) const override;
+  // BNES: 防止 InstallVerifier 強制停用我們的 PQC 錢包
+  bool MustRemainEnabled(const Extension* extension,
+                         std::u16string* error) const override;
 };
 
 }  // namespace extensions

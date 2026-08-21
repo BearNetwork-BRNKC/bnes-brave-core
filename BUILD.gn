@@ -297,8 +297,8 @@ if (is_win) {
 group("brave") {
   deps = [
     "build/$target_os:brave",
-    "//brave/bns:bns_security",
-    "//brave/bns:scheme_handler",
+    "//brave/bnes:security",
+    "//brave/bnes:scheme_handler",
   ]
   if (!is_android && !is_ios) {
     deps += [

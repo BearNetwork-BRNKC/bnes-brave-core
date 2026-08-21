@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/notreached.h"
+#include "brave/browser/extensions/bnes_extension_constants.h"
 #include "extensions/common/constants.h"
 
 namespace extensions {
@@ -25,8 +26,16 @@ std::string BraveExtensionProvider::GetDebugPolicyProviderName() const {
 }
 
 bool BraveExtensionProvider::MustRemainInstalled(const Extension* extension,
-                                                 std::u16string* error) const {
+                                                  std::u16string* error) const {
   return extension->id() == brave_extension_id;
+}
+
+// BNES: 對 PQC 錢包套用 MustRemainEnabled，防止 InstallVerifier
+// 透過 MustRemainDisabled 強制將非商店 CRX 停用。
+// 此為第一道防線；第二道防線為 chromium_src overlay 中的 NeedsVerification Hook。
+bool BraveExtensionProvider::MustRemainEnabled(const Extension* extension,
+                                               std::u16string* error) const {
+  return extension->id() == kBnesWalletExtensionId;
 }
 
 }  // namespace extensions

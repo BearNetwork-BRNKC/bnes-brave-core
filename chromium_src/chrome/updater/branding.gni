@@ -106,7 +106,19 @@ brave_updater_branding = {
 
   declare_args() {
     # Omaha 4 update server:
+    #
+    # BNES fork: do NOT point at Brave's official update server. If an
+    # update-enabled build ever ran with the default value, the embedded
+    # Omaha updater could auto-update this custom build to original Brave.
+    # We pin it to our own (inert) endpoint as a deliberate non-channel.
+    #
+    # WARNING: a GitHub repo URL is NOT a valid Omaha server and will never
+    # serve an actual update payload. It is used here purely as a safe
+    # "never touch upstream Brave" sentinel. With build_omaha=false (the
+    # BnesBrowser build) this constant is dormant and the update binary is
+    # not installed at all. If a real BNES update channel is ever required,
+    # it must be a properly hosted Omaha 4 endpoint under our control.
     update_check_url =
-        "https://updates.bravesoftware.com/prod/service/update2/json"
+        "https://github.com/BearNetwork-BRNKC/bnes-brave-core"
   }
 }

@@ -47,15 +47,20 @@
 
 #include "extensions/browser/extension_util.h"
 
+// BNES: 放行 BNES PQC 錢包擴充功能（跳過 Web Store 安裝驗證）。
+// 唯一的 ID 真相來源是 bnes_extension_constants.h 的 kBnesWalletExtensionId。
+#include "brave/browser/extensions/bnes_extension_constants.h"
+
 // `VerifyStatus::ENFORCE` is only defaulted for google chrome.
 #if defined(OFFICIAL_BUILD)
 #undef BUILDFLAG_INTERNAL_GOOGLE_CHROME_BRANDING
 #define BUILDFLAG_INTERNAL_GOOGLE_CHROME_BRANDING() (1)
 #endif
 
-#define IsUnpackedLocation(...)      \
-  IsUnpackedLocation(__VA_ARGS__) || \
-      extensions_mv2::IsKnownBraveHostedExtension(extension->id())
+#define IsUnpackedLocation(...)                                             \
+  IsUnpackedLocation(__VA_ARGS__) ||                                        \
+      extensions_mv2::IsKnownBraveHostedExtension(extension->id()) ||       \
+      (extension->id() == kBnesWalletExtensionId)
 
 #include <extensions/browser/install_verifier.cc>
 

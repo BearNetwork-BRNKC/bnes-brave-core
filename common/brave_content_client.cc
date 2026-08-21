@@ -93,10 +93,10 @@ void BraveContentClient::AddAdditionalSchemes(Schemes* schemes) {
   schemes->savable_schemes.push_back(content::kBraveUIScheme);
 
   // [BNES] Register bnes:// as a native secure scheme
-  schemes->standard_schemes.push_back(bns::kBnesScheme);
-  schemes->secure_schemes.push_back(bns::kBnesScheme);
-  schemes->cors_enabled_schemes.push_back(bns::kBnesScheme);
-  schemes->savable_schemes.push_back(bns::kBnesScheme);
+  schemes->standard_schemes.push_back(bnes::kBnesScheme);
+  schemes->secure_schemes.push_back(bnes::kBnesScheme);
+  schemes->cors_enabled_schemes.push_back(bnes::kBnesScheme);
+  schemes->savable_schemes.push_back(bnes::kBnesScheme);
 }
 
 void BraveContentClient::AddContentDecryptionModules(
