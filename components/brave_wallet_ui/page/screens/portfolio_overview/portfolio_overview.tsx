@@ -81,7 +81,7 @@ import {
   PortfolioOverviewChart, //
 } from './components/portfolio_overview_chart/portfolio_overview_chart'
 import ColumnReveal from '../../../components/shared/animated-reveals/column-reveal'
-import { Nfts } from '../../../components/desktop/views/nfts/components/nfts'
+import { Nfts } from '../nfts/nfts'
 import {
   BuySendSwapDepositNav, //
 } from './components/buy_send_swap_deposit_nav/buy_send_swap_deposit_nav'
@@ -97,7 +97,7 @@ import {
 import {
   PortfolioOverviewHeader, //
 } from '../../../components/desktop/card-headers/portfolio-overview-header'
-import { Banners } from '../../../components/desktop/views/banners/banners'
+import { Banners } from '../../../components/desktop/banners/banners'
 import {
   LastPricesUpdatedTooltip, //
 } from '../../../components/shared/last_prices_updated_tooltip/last_prices_updated_tooltip'
@@ -428,7 +428,7 @@ export const PortfolioOverview = () => {
 
   const formattedFullPortfolioFiatBalance = React.useMemo(() => {
     return !fullPortfolioFiatBalance.isUndefined() && defaultFiat
-      ? fullPortfolioFiatBalance.formatAsFiat(defaultFiat)
+      ? fullPortfolioFiatBalance.compactAsFiat(defaultFiat)
       : ''
   }, [fullPortfolioFiatBalance, defaultFiat])
 
@@ -477,7 +477,7 @@ export const PortfolioOverview = () => {
       return ''
     }
 
-    return difference.formatAsFiat(defaultFiat, 2)
+    return difference.compactAsFiat(defaultFiat, 2)
   }, [defaultFiat, change])
 
   const isPortfolioDown = new Amount(percentageChange).lt(0)
@@ -531,7 +531,7 @@ export const PortfolioOverview = () => {
           value: parseFloat(
             item.fiatAmount.div(fullPortfolioFiatBalance).times(100).format(2),
           ),
-          fiatValue: item.fiatAmount.formatAsFiat(defaultFiat),
+          fiatValue: item.fiatAmount.compactAsFiat(defaultFiat),
         }))
 
       // Add "Other" if there are more than DISTRIBUTION_LIMIT
@@ -541,7 +541,7 @@ export const PortfolioOverview = () => {
           value: parseFloat(
             otherTotal.div(fullPortfolioFiatBalance).times(100).format(2),
           ),
-          fiatValue: otherTotal.formatAsFiat(defaultFiat),
+          fiatValue: otherTotal.compactAsFiat(defaultFiat),
         })
       }
 

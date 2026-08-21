@@ -419,6 +419,10 @@ test("brave_unit_tests") {
       "//brave/components/brave_ads/core/browser/service:test_support",
       "//brave/components/brave_ads/core/test:brave_ads_unit_tests",
     ]
+
+    if (enable_brave_rewards) {
+      deps += [ "//brave/browser/ui/webui/ads_internals:unit_tests" ]
+    }
   }
 
   if (enable_brave_rewards) {
@@ -1398,6 +1402,7 @@ test("brave_browser_tests") {
       "//brave/browser/ui/views/profiles/brave_profile_menu_view_browsertest.cc",
       "//brave/browser/ui/views/toolbar/brave_app_menu_browsertest.cc",
       "//brave/browser/ui/views/toolbar/brave_toolbar_view_browsertest.cc",
+      "//brave/browser/ui/views/toolbar/screenshot_preview_dialog_browsertest.cc",
     ]
     deps += [
       "//brave/browser/ui/darker_theme:browser_tests",
@@ -1414,6 +1419,7 @@ test("brave_browser_tests") {
       "//brave/browser/ui/views/permissions:browser_tests",
       "//brave/browser/ui/views/split_view:browser_tests",
       "//brave/browser/ui/views/tabs:browser_tests",
+      "//brave/browser/ui/views/toolbar:screenshot",
       "//brave/browser/ui/views/workspaces:browser_tests",
       "//brave/components/containers/buildflags",
       "//brave/components/sidebar/browser",
@@ -1641,6 +1647,7 @@ if (is_android) {
       "//brave/android/javatests/org/chromium/chrome/browser/settings/BackgroundImagesPreferencesTest.java",
       "//brave/android/javatests/org/chromium/chrome/browser/settings/BraveAppearancePreferencesTest.java",
       "//brave/android/javatests/org/chromium/chrome/browser/settings/BraveMainSettingsFragmentTest.java",
+      "//brave/android/javatests/org/chromium/chrome/browser/settings/BraveSearchEnginesPreferencesPolicyTest.java",
       "//brave/android/javatests/org/chromium/chrome/browser/settings/BraveSettingsSearchTest.java",
       "//brave/android/javatests/org/chromium/chrome/browser/settings/BraveTabsAndTabGroupsSettingsTest.java",
       "//brave/android/javatests/org/chromium/chrome/browser/settings/search/BraveAutofillOptionsSearchIndexTest.java",
@@ -1678,6 +1685,7 @@ if (is_android) {
       "//chrome/browser/glic/android:common_java",
       "//chrome/browser/glic/android:java",
       "//chrome/browser/hub:java",
+      "//chrome/browser/incognito:incognito_utils_java",
       "//chrome/browser/keyboard_accessory/android/java",
       "//chrome/browser/language/android:java",
       "//chrome/browser/open_in_app/android:java",
@@ -1741,6 +1749,7 @@ if (is_android) {
       "//components/password_manager/core/browser:password_manager_java_enums",
       "//components/permissions/android:java",
       "//components/policy/android:policy_java",
+      "//components/policy/android:policy_java_test_support",
       "//components/prefs/android:java",
       "//components/search_engines/android:java",
       "//components/signin/public/android:java",

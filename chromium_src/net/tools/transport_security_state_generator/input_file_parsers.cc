@@ -303,6 +303,11 @@ constexpr std::string_view kBraveHstsJson = R"brave_hsts_json({
       "mode": "force-https",
       "policy": "custom"
     },
+    {
+      "name": "webcompat.brave.com",
+      "mode": "force-https",
+      "policy": "custom"
+    },
 
     // Creators
     {
@@ -550,9 +555,9 @@ bool ParseCertificatesFile(std::string_view certs_input,
                            Pinsets* pinsets,
                            base::Time* timestamp) {
   constexpr std::string_view brave_certs = R"brave_certs(
-# Last updated: Wed Aug 12 21:43:40 2026
+# Last updated: Wed Aug 19 16:47:53 2026
 PinsListTimestamp
-1786567420
+1787172473
 
 # =====BEGIN BRAVE ROOTS ASC=====
 #From https://www.amazontrust.com/repository/
