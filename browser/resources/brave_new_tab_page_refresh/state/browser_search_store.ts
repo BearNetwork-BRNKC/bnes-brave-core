@@ -216,6 +216,7 @@ export function createSearchStore() {
       if (searchEngine && searchEngine.keyword) {
         query = [searchEngine.keyword, query].join(' ')
       }
+      searchProxy.handler.setInputMethod(InputMethod.kKeyboard)
       searchProxy.handler.queryAutocomplete(
         activeQueryId++,
         query,
@@ -224,7 +225,6 @@ export function createSearchStore() {
         SuggestInventory.kDefault,
         query.length === 0,
         /*keyword*/ '',
-        InputMethod.kKeyboard,
       )
     },
 
